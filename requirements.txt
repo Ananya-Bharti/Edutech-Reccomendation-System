@@ -1,0 +1,80 @@
+# ============================================================
+# EDUTECH REELS - REQUIREMENTS.TXT
+# Short-Form Video Recommendation System
+# Python Dependencies
+# ============================================================
+
+# ============================================================
+# WEB FRAMEWORK
+# ============================================================
+Flask==3.0.0                    # Main web framework for backend API
+flask-cors==4.0.0               # Enable Cross-Origin Resource Sharing for React frontend
+gunicorn==21.2.0                # Production WSGI server
+
+# ============================================================
+# FIREBASE / GOOGLE CLOUD
+# ============================================================
+firebase-admin==6.4.0           # Firebase Admin SDK (Firestore, Storage, Auth)
+google-cloud-firestore==2.14.0  # Firestore database client
+google-cloud-storage==2.14.0    # Cloud Storage for video files
+
+# ============================================================
+# MACHINE LEARNING / RECOMMENDATIONS
+# ============================================================
+scikit-learn==1.4.0             # ML algorithms (collaborative filtering, similarity)
+numpy==1.26.3                   # Numerical operations
+pandas==2.2.0                   # Data manipulation and analysis
+
+# ============================================================
+# VIDEO PROCESSING
+# ============================================================
+opencv-python==4.9.0.80         # Video processing and thumbnail generation
+Pillow==10.2.0                  # Image processing for thumbnails
+ffmpeg-python==0.2.0            # Python wrapper for FFmpeg
+
+# ============================================================
+# UTILITIES
+# ============================================================
+python-dotenv==1.0.1            # Load environment variables from .env file
+requests==2.31.0                # HTTP requests
+python-dateutil==2.8.2          # Date/time utilities
+
+# ============================================================
+# DATA VALIDATION
+# ============================================================
+pydantic==2.6.0                 # Data validation and settings management
+
+# ============================================================
+# OPTIONAL (Development/Testing)
+# ============================================================
+pytest==8.0.0                   # Testing framework
+black==24.1.1                   # Code formatter
+flake8==7.0.0                   # Linting
+
+# ============================================================
+# INSTALLATION INSTRUCTIONS
+# ============================================================
+# 
+# 1. Create virtual environment:
+#    python -m venv venv
+#
+# 2. Activate virtual environment:
+#    Windows: venv\Scripts\activate
+#    Mac/Linux: source venv/bin/activate
+#
+# 3. Install dependencies:
+#    pip install -r requirements.txt
+#
+# 4. Verify installation:
+#    pip list
+#
+# ============================================================
+# SYSTEM REQUIREMENTS
+# ============================================================
+#
+# Python: 3.9 or higher
+# FFmpeg: Must be installed separately (see README)
+# Node.js: 18.x or higher (for frontend)
+# Firebase Account: Free tier sufficient for demo
+#
+# ============================================================

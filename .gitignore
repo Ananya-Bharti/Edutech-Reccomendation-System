@@ -1,0 +1,23 @@
+# Node.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+*.log
+
+# Python
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# Environment Files
+.env
+.env.local
+.env.*.local
+frontend/.env.local
+
+# Large video data (avoids huge git commits)
+Videos data/
+
+# OS Files
+.DS_Store
+Thumbs.db
