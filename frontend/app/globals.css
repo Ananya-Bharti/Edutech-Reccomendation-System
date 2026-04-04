@@ -1050,5 +1050,63 @@ body {
   .creator-profile-modal { padding: 16px; }
   .creator-big-avatar { width: 48px; height: 48px; font-size: 20px; }
   .creator-name-big { font-size: 18px; }
+  .engagement-bar { padding: 6px 12px; font-size: 11px; }
 }
 
+/* ═══════════════════════════════════════════
+   ENGAGEMENT SCORE BAR
+   ═══════════════════════════════════════════ */
+.engagement-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 24px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  animation: fadeIn 0.3s ease;
+}
+.eng-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+}
+.eng-score {
+  font-weight: 800;
+  font-size: 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.eng-detail {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Learned interest tags (from engagement) */
+.learned-tag {
+  background: rgba(253, 121, 168, 0.1);
+  color: var(--accent-pink);
+  border-color: rgba(253, 121, 168, 0.15);
+}
+
+/* Per-video engagement in modal */
+.your-engagement {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.your-engagement span {
+  padding: 4px 10px;
+  background: var(--bg-card);
+  border-radius: 100px;
+  border: 1px solid var(--border);
+}
