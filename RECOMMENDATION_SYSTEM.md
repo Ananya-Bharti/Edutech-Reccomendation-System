@@ -5,13 +5,14 @@
 1. [System Overview](#system-overview)
 2. [Architecture](#architecture)
 3. [Data Model](#data-model)
-4. [Engagement Tracking Module](#engagement-tracking-module)
-5. [Scoring Algorithm](#scoring-algorithm)
-6. [Feed Construction & Interleaving](#feed-construction--interleaving)
-7. [Interaction → Feed Update Pipeline](#interaction--feed-update-pipeline)
-8. [Worked Examples](#worked-examples)
-9. [Backend Recommendation Engine](#backend-recommendation-engine)
-10. [Future Enhancements](#future-enhancements)
+4. [User Profiles & Blank-Slate Mode](#user-profiles--blank-slate-mode)
+5. [Engagement Tracking Module](#engagement-tracking-module)
+6. [Scoring Algorithm](#scoring-algorithm)
+7. [Feed Construction & Interleaving](#feed-construction--interleaving)
+8. [Interaction → Feed Update Pipeline](#interaction--feed-update-pipeline)
+9. [Worked Examples](#worked-examples)
+10. [Backend Recommendation Engine](#backend-recommendation-engine)
+11. [Future Enhancements](#future-enhancements)
 
 ---
 
@@ -21,7 +22,8 @@ EduTech Reels uses a **hybrid recommendation system** that combines:
 
 - **Content-based filtering** — Matches video attributes (category, tags) against the user's declared profile.
 - **Engagement-based learning** — Learns from the user's real-time behavior (likes, saves, shares, watch time) to refine recommendations.
-- **Cross-category discovery** — Intentionally injects videos from other domains to broaden the user's exposure.
+- **Blank-slate cold start** — New users see a perfectly balanced feed across all categories, which adapts in real-time as they interact.
+- **Cross-category discovery** — Intentionally injects videos from other domains to broaden exposure.
 
 The system runs **entirely client-side** during the demo, with a mirror implementation on the Flask backend for production use with Firebase.
 
@@ -38,15 +40,23 @@ The system runs **entirely client-side** during the demo, with a mirror implemen
 │  │  (static)     │   │  (per-user state)   │   │  (per-video)│ │
 │  └──────────────┘   └────────────────────┘   └──────┬──────┘ │
 │                                                      │        │
-│                                              ┌───────▼──────┐ │
-│                                              │ Interleaver  │ │
-│                                              │ (cross-cat)  │ │
-│                                              └───────┬──────┘ │
-│                                                      │        │
-│                                              ┌───────▼──────┐ │
-│                                              │  Feed Grid   │ │
-│                                              │  (rendered)  │ │
-│                                              └──────────────┘ │
+│                              ┌────────────────────────┘        │
+│                              ▼                                 │
+│                    ┌───────────────────┐                       │
+│                    │   Interleaver     │                       │
+│                    │ ┌───────────────┐ │                       │
+│                    │ │ Undecided:    │ │                       │
+│                    │ │ Round-Robin   │ │                       │
+│                    │ │ ENG→MED→MBA  │ │                       │
+│                    │ ├───────────────┤ │                       │
+│                    │ │ Typed User:   │ │                       │
+│                    │ │ 4:1 Primary   │ │                       │
+│                    │ └───────────────┘ │                       │
+│                    └────────┬──────────┘                       │
+│                             ▼                                  │
+│                    ┌──────────────┐                            │
+│                    │  Feed Grid   │                            │
+│                    └──────────────┘                            │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -56,7 +66,7 @@ The system runs **entirely client-side** during the demo, with a mirror implemen
 2. **User profile** — Static profile with `aspirant_type` and `interests[]`.
 3. **Engagement state** — Accumulated per-user interaction data (in-memory).
 4. **Scorer** — Computes a numerical score for every video.
-5. **Interleaver** — Separates primary/cross-category, then weaves them together.
+5. **Interleaver** — Uses round-robin (undecided) or 4:1 (typed) strategy.
 6. **Feed** — Final ordered list rendered in the grid.
 
 ---
@@ -80,13 +90,13 @@ The system runs **entirely client-side** during the demo, with a mirror implemen
 
 ### User Profile
 
-| Field           | Type       | Description                            |
-|-----------------|------------|----------------------------------------|
-| `user_id`       | `string`   | Unique user ID                         |
-| `name`          | `string`   | Display name                           |
-| `aspirant_type` | `string`   | Primary category interest              |
-| `interests`     | `string[]` | Declared interest tags                 |
-| `bio`           | `string`   | User description                       |
+| Field           | Type       | Description                                              |
+|-----------------|------------|----------------------------------------------------------|
+| `user_id`       | `string`   | Unique user ID                                           |
+| `name`          | `string`   | Display name                                             |
+| `aspirant_type` | `string`   | Category interest: `engineering`, `medical`, `mba`, or **`undecided`** |
+| `interests`     | `string[]` | Declared interest tags (empty for blank-slate users)     |
+| `bio`           | `string`   | User description                                         |
 
 ### EngagementRecord (per video, per user)
 
@@ -109,7 +119,30 @@ The system runs **entirely client-side** during the demo, with a mirror implemen
 
 ---
 
-## 4. Engagement Tracking Module
+## 4. User Profiles & Blank-Slate Mode
+
+### The Four Demo Users
+
+| User | aspirant_type | interests | Purpose |
+|------|--------------|-----------|---------|
+| **Demo Student** | `undecided` | `[]` (empty) | **Blank slate** — starts with zero preferences, equal feed. Demonstrates how the system learns from scratch. |
+| Rahul Kumar | `engineering` | `gate, calculus, mechanics, iit, physics` | GATE-focused engineering student |
+| Priya Sharma | `medical` | `neet, biology, anatomy, physiology, mbbs` | NEET-focused medical student |
+| Amit Patel | `mba` | `cat, finance, consulting, iim, strategy` | CAT-focused MBA aspirant |
+
+### Why Blank Slate Matters
+
+Demo Student is the **key user for demonstrating the recommendation system**:
+
+1. **Before any interaction** — Feed shows perfectly balanced `ENG → MED → MBA → ENG → MED → MBA` round-robin. All categories are equally visible.
+2. **After liking engineering videos** — Engineering content rises to the top within its round-robin bucket. Tags from liked videos (e.g., `gate`, `calculus`) boost similar content.
+3. **After multiple interactions** — The learned tag and creator affinities significantly reshape the feed, making it visibly different from the initial state.
+
+This makes the recommendation system's **learning effect clearly visible** during a demo.
+
+---
+
+## 5. Engagement Tracking Module
 
 ### What Gets Tracked
 
@@ -134,10 +167,10 @@ The weight rationale follows a **user intent hierarchy**:
    View (1)   ←── "I clicked on it"               ═══ LOWEST INTENT
 ```
 
-- **Sharing** and **Saving** are weighted equally at 5 because both indicate strong intent — sharing is social endorsement, saving is personal bookmarking for future use.
-- **Liking** is moderate (3) — it's a quick tap that signals enjoyment but doesn't indicate deep engagement.
-- **Viewing** is minimal (1) — clicking on a video could be accidental or exploratory.
-- **Watch time** is duration-based (2 per 10 seconds) — someone who watches 60 seconds is clearly more engaged than someone who closes after 3 seconds.
+- **Sharing** and **Saving** are weighted equally at 5 because both indicate strong intent.
+- **Liking** is moderate (3) — signals enjoyment but doesn't indicate deep engagement.
+- **Viewing** is minimal (1) — clicking could be accidental or exploratory.
+- **Watch time** is duration-based (2 per 10 seconds) — 60 seconds of watching = clearly engaged.
 
 ### Affinity Calculation
 
@@ -164,24 +197,24 @@ tagScores["engineering"] += 10  → now 10
 creatorScores["Tech Expert"] += 10  → now 10
 ```
 
-Later, when scoring other videos, any video tagged with `gate` or `calculus` or by "Tech Expert" will get a boost.
-
 ---
 
-## 5. Scoring Algorithm
+## 6. Scoring Algorithm
 
 Every video gets a numerical score based on 6 factors:
 
-### Factor 1: Category Match (base: +40 or +8)
+### Factor 1: Category Match (base: +20, +40, or +8)
 
 ```
-if (video.category === user.aspirant_type)
+if (user.aspirant_type === "undecided")
+  score += 20    // Blank-slate: all categories equal
+else if (video.category === user.aspirant_type)
   score += 40    // Primary category — strong match
 else
   score += 8     // Cross-category — baseline for discovery
 ```
 
-An engineering student's engineering videos start at 40, while medical and MBA videos start at 8. This ensures the feed is **majority relevant** but cross-category videos still have a presence.
+For the **blank-slate Demo Student**, all videos start at 20 — creating a level playing field where only engagement data breaks the tie.
 
 ### Factor 2: Static Interest Match (up to ~64 pts)
 
@@ -192,103 +225,134 @@ For each tag on the video:
 If any interest keyword appears in the video title → score += 6
 ```
 
-**Demo Student** has interests: `["coding", "campus", "college", "placement", "nit", "software", "startup", "developer"]`
+For Demo Student (empty interests), this contributes **0 points** — ensuring the initial feed is truly neutral.
 
-A video with tags `["coding", "placement", "tech"]` would get +16 (2 matching tags × 8).
-
-### Factor 3: Learned Tag Affinity (up to 30 pts per tag, capped)
+### Factor 3: Learned Tag Affinity (up to 35 pts per tag, capped)
 
 ```
 For each tag on the video:
-  tagAffinity = engagement.tagScores[tag] × 1.5
-  score += min(tagAffinity, 30)    // Capped at 30 per tag
+  tagAffinity = engagement.tagScores[tag] × 2
+  score += min(tagAffinity, 35)    // Capped at 35 per tag
 ```
 
-This is the **learning** part — if a user has been liking/saving/watching videos tagged with `gate`, future `gate`-tagged videos (even from other categories) get boosted.
+This is the **learning** part. After liking a `gate`-tagged video, all future `gate`-tagged videos get up to +35 points per tag. With 3-6 tags per video, this can contribute **100+ points** — enough to completely reshape the feed.
 
-### Factor 4: Creator Affinity (up to 25 pts, capped)
-
-```
-creatorAffinity = engagement.creatorScores[creator] × 2
-score += min(creatorAffinity, 25)
-```
-
-If a user watches multiple videos by "Dr. Sharma", all of Dr. Sharma's other content gets boosted. The cap prevents a single creator from dominating the feed.
-
-### Factor 5: Direct Engagement Boost (up to ~40 pts)
+### Factor 4: Creator Affinity (up to 30 pts, capped)
 
 ```
-if user liked this video → score += 10
-if user saved this video → score += 12
-if user shared this video → score += 8
+creatorAffinity = engagement.creatorScores[creator] × 2.5
+score += min(creatorAffinity, 30)
+```
+
+If a user watches multiple videos by "Dr. Sharma", all of Dr. Sharma's other content gets boosted.
+
+### Factor 5: Direct Engagement Boost (up to ~47 pts)
+
+```
+if user liked this video → score += 12
+if user saved this video → score += 15
+if user shared this video → score += 10
 score += min(watchTime / 5, 10)
 ```
 
-Already-interacted videos are boosted moderately, so they stay accessible but don't completely block new content.
+Already-interacted videos are boosted moderately, keeping them accessible.
 
-### Factor 6: Random Jitter (+0 to 4 pts)
+### Factor 6: Random Jitter (+0 to 3 pts)
 
 ```
-score += Math.random() × 4
+score += Math.random() × 3
 ```
 
-Adds slight variation so same-scored videos don't always appear in the same order. This creates a "fresh" feel on each page load.
+Adds slight variation for a "fresh" feel.
 
 ### Score Summary Table
 
 | Factor                  | Max Contribution | What Drives It                      |
 |-------------------------|------------------|-------------------------------------|
-| Category match          | 40 pts           | User's `aspirant_type`              |
+| Category match          | 20 (undecided) / 40 (typed) | User's `aspirant_type` |
 | Static interest match   | ~64 pts          | User's declared `interests[]`       |
-| Learned tag affinity    | 30 pts/tag       | Accumulated from interactions       |
-| Creator affinity        | 25 pts           | How much user engages with creator  |
-| Direct engagement       | ~40 pts          | Like/Save/Share/Watch on this video |
-| Random jitter           | 4 pts            | Variety                             |
+| Learned tag affinity    | 35 pts/tag       | Accumulated from interactions       |
+| Creator affinity        | 30 pts           | How much user engages with creator  |
+| Direct engagement       | ~47 pts          | Like/Save/Share/Watch on this video |
+| Random jitter           | 3 pts            | Variety                             |
 
 ### Typical Score Ranges
 
-- **Highly relevant, interacted**: 80–150+ pts
-- **Relevant, not yet interacted**: 50–80 pts
-- **Cross-category, no engagement**: 8–20 pts
-- **Cross-category, with learned affinity**: 30–70 pts
+**Blank-slate user (Demo Student):**
+- Initial (no engagement): ~20-23 pts (all videos equal)
+- After 1 like+save on engineering: Engineering videos = 40-80 pts, others = 20-23 pts
+- After 3+ engineering interactions: Engineering = 80-150+ pts, others = 20-30 pts
+
+**Typed user (Rahul/Priya/Amit):**
+- Primary category, matching interests: 50-80 pts
+- Primary category, no interest match: ~40 pts
+- Cross-category: 8-20 pts (boostable via engagement)
 
 ---
 
-## 6. Feed Construction & Interleaving
+## 7. Feed Construction & Interleaving
 
-After scoring, the feed is constructed using **cross-category interleaving**:
+### Two Modes
+
+The interleaver operates differently based on user type:
+
+#### Mode 1: Blank-Slate (undecided) — Round-Robin
+
+```
+1. Score ALL videos
+2. Split into 3 category buckets:
+   - engineering[] sorted by score desc
+   - medical[] sorted by score desc
+   - mba[] sorted by score desc
+3. Round-robin: take 1 from each bucket in rotation
+   → ENG, MED, MBA, ENG, MED, MBA, ...
+```
+
+**Result pattern:**
+```
+[ENG] [MED] [MBA] [ENG] [MED] [MBA] [ENG] [MED] [MBA] ...
+  1     2     3     4     5     6     7     8     9
+```
+
+Every 2nd-3rd video is from a **different domain**. Within each domain, videos are sorted by score — so as the user interacts, the top-scoring videos within each bucket shift.
+
+#### Mode 2: Typed User — 4:1 Interleaving
 
 ```
 1. Score ALL videos
 2. Split into:
-   - primary[]   → videos matching user's aspirant_type, sorted by score desc
+   - primary[]   → matching user's aspirant_type, sorted by score desc
    - cross[]     → all other videos, sorted by score desc
 3. Interleave:
-   - Take 4 primary videos
-   - Insert 1 cross-category video
-   - Repeat until all videos are placed
+   - Take 4 primary videos, then 1 cross-category
+   - Repeat
 ```
 
-### Result Pattern
-
-For an Engineering student:
-
+**Result pattern (Engineering student):**
 ```
 [ENG] [ENG] [ENG] [ENG] [MED] [ENG] [ENG] [ENG] [ENG] [MBA] ...
   1     2     3     4     5*    6     7     8     9    10*
 ```
 
-Slots marked with `*` are cross-category discovery slots. This means **~20% of the feed** (1 in 5) is cross-category content. Cross-category videos are still **sorted by relevance** — so the most relevant medical video (perhaps one whose tags overlap with user interests) appears first.
+### Why Two Modes?
 
-### Why Interleaving?
+- **Blank-slate users** need maximum exposure to discover their interests. Equal representation ensures the system has no bias.
+- **Typed users** already have declared preferences. The 4:1 ratio keeps the feed relevant while still providing discovery.
 
-- Pure score-based sorting pushes ALL cross-category to the bottom (score 8 vs 40+).
-- Interleaving guarantees visibility while keeping relevance.
-- Cross-category videos boosted by engagement (e.g., user liked a medical video) will appear in higher cross-category slots.
+### How Engagement Reshapes the Feed
+
+Even with round-robin interleaving, engagement **changes the ordering within each bucket**:
+
+1. User likes an engineering video → that video's tags get affinity scores.
+2. Other engineering videos sharing those tags score higher.
+3. Within the engineering bucket, those videos rise to the top.
+4. In the next round-robin cycle, the top engineering slot now shows a more relevant video.
+
+With enough engagement, the engineering bucket's internal ordering becomes heavily personalized.
 
 ---
 
-## 7. Interaction → Feed Update Pipeline
+## 8. Interaction → Feed Update Pipeline
 
 ### Step-by-Step Flow
 
@@ -315,13 +379,13 @@ User clicks "Like" on a video
            │
            ▼
 ┌──────────────────────────┐
-│ 4. Re-score ALL videos    │  ← scoreVideosForUser() runs
+│ 4. Re-score ALL videos    │  ← scoreVideo() runs
 │    with updated engagement │     with new affinity data
 └──────────┬───────────────┘
            │
            ▼
 ┌──────────────────────────┐
-│ 5. Re-interleave feed     │  ← primary/cross split + weave
+│ 5. Re-interleave feed     │  ← round-robin or 4:1
 └──────────┬───────────────┘
            │
            ▼
@@ -336,12 +400,12 @@ User clicks "Like" on a video
 When the feed updates, the user sees:
 
 1. **Toast notification** — "❤️ Liked! Feed updated" (pill at bottom, auto-dismisses in 2s)
-2. **Feed Updated badge** — "✨ Feed Updated — reranked based on your activity" (horizontal banner above the grid, fades in)
-3. **Grid flash animation** — The entire grid briefly flashes (opacity dip + brightness boost) to signal content has reordered
+2. **Feed Updated badge** — "✨ Feed Updated — reranked based on your activity" (banner above grid)
+3. **Grid flash animation** — Brief opacity dip + brightness boost
+4. **Engagement Score bar** — Shows total score, view count, like count, save count, watch time
+5. **Learned tags** — New `🔥` tags appear in the user strip, showing discovered interests
 
 ### Watch Time Recording
-
-Watch time is tracked from **modal open to modal close**:
 
 ```
 1. User opens video modal → watchStartRef = Date.now()
@@ -351,101 +415,125 @@ Watch time is tracked from **modal open to modal close**:
 5. Feed re-ranks with new watch time data
 ```
 
-This means **even just watching a video** without clicking any buttons affects future recommendations.
+---
+
+## 9. Worked Examples
+
+### Example 1: Blank-Slate Demo Student — First Load
+
+**Profile**: undecided, interests = `[]`
+
+**No prior engagement** — All videos score equally, round-robin interleaving:
+
+| Slot | Video                   | Category | Score Breakdown        | Total |
+|------|-------------------------|----------|------------------------|-------|
+| 1    | GATE Preparation Guide  | ENG      | 20(base) + 2(jitter)   | ~22  |
+| 2    | NEET Biology Revision   | MED      | 20(base) + 1(jitter)   | ~21  |
+| 3    | CAT Quantitative Tips   | MBA      | 20(base) + 2(jitter)   | ~22  |
+| 4    | JEE Physics Quick Tips  | ENG      | 20(base) + 1(jitter)   | ~21  |
+| 5    | MBBS Journey Explained  | MED      | 20(base) + 3(jitter)   | ~23  |
+| 6    | MBA Career Consulting   | MBA      | 20(base) + 1(jitter)   | ~21  |
+
+All scores are nearly identical (~20-23). The feed is a perfect **ENG → MED → MBA** rotation.
+
+### Example 2: Demo Student Likes + Saves an Engineering Video
+
+User opens "GATE Preparation Guide" (tags: `hostel, calculus, nit, mechanics, startup, engineering`), watches 30s, likes it, saves it.
+
+```
+Engagement for GATE Prep Guide:
+  view_score = 1(view) + 3(like) + 5(save) + 0(share) + 6(30s/10 × 2) = 15
+
+Tag affinity (each tag gets 15):
+  tagScores["hostel"]      = 15
+  tagScores["calculus"]    = 15
+  tagScores["nit"]         = 15
+  tagScores["mechanics"]   = 15
+  tagScores["startup"]     = 15
+  tagScores["engineering"] = 15
+
+Creator affinity:
+  creatorScores["Eng Counselor"] = 15
+```
+
+**Re-scoring after this interaction:**
+
+| Video                        | Category | Before | After | Change   |
+|------------------------------|----------|--------|-------|----------|
+| **GATE Prep Guide** (saved)  | ENG      | 22     | 20 + min(15×2,35)×6tags + min(15×2.5,30) + 12(liked) + 15(saved) + 6(watchTime) = **~250+** | +230  |
+| Understanding Calculus       | ENG      | 21     | 20 + 30(calculus tag×2) + 30(engineering tag) = **~80** | +59   |
+| JEE Physics Quick Tips       | ENG      | 21     | 20 + 30(mechanics) + 30(engineering) = **~80** | +59   |
+| NEET Biology Revision        | MED      | 21     | 20 + 0 = **~21** | 0     |
+| CAT Quantitative Tips        | MBA      | 22     | 20 + 0 = **~22** | 0     |
+
+**Result**: Engineering videos with matching tags (`calculus`, `mechanics`, `engineering`) jump to 80+ points. Medical and MBA stay at ~20. Within the round-robin, the **engineering bucket** now has dramatically better-scored videos, making the top engineering slot show the most relevant content.
+
+### Example 3: Demo Student Likes 3 Medical Videos
+
+After interacting with 3 medical videos (each with tags like `neet, biology, anatomy`):
+
+```
+tagScores["neet"]     = 45  (3 videos × 15 each)
+tagScores["biology"]  = 45
+tagScores["anatomy"]  = 30  (2 videos had this tag)
+```
+
+Now medical videos with these tags score: `20(base) + 35(neet) + 35(biology) + 35(anatomy) = 125 pts`
+
+Compared to un-engaged engineering videos at ~22 pts. The medical portion of the round-robin now shows highly personalized, relevant medical content first.
+
+### Example 4: Typed Users (Rahul vs Priya)
+
+**Rahul Kumar** (engineering, interests: `gate, calculus, mechanics, iit, physics`)
+**Priya Sharma** (medical, interests: `neet, biology, anatomy, physiology, mbbs`)
+
+For "Understanding Calculus" (tags: `calculus, mathematics, engineering`):
+```
+Rahul:  40(cat) + 8(calculus) + 8(mathematics) = 56
+Priya:  8(cross) + 0(no tag match) = 8
+```
+
+For "NEET Biology Revision" (tags: `neet, biology, anatomy`):
+```
+Rahul:  8(cross) + 0 = 8
+Priya:  40(cat) + 8(neet) + 8(biology) + 8(anatomy) = 64
+```
+
+Each user's feed is dominated by their declared category, with strong tag-level personalization within it.
 
 ---
 
-## 8. Worked Examples
+## 10. Backend Recommendation Engine
 
-### Example 1: New User — Demo Student
-
-**Profile**: Engineering, interests = `[coding, campus, college, placement]`
-
-**No prior engagement** — Feed is purely content-based:
-
-| Rank | Video                  | Category | Score Breakdown                        | Total |
-|------|------------------------|----------|----------------------------------------|-------|
-| 1    | Coding Interview Tips  | ENG      | 40(cat) + 16(tags: coding, placement) + 6(title) + 2(jitter) | ~64  |
-| 2    | IIIT Campus Life       | ENG      | 40(cat) + 8(tag: campus) + 6(title) + 3(jitter) | ~57  |
-| 3    | Career as SWE          | ENG      | 40(cat) + 8(tag: software) + 3(jitter) | ~51  |
-| 4    | GATE Prep Guide        | ENG      | 40(cat) + 0(no tag match) + 2(jitter)  | ~42  |
-| **5**| **NEET Biology**       | **MED**  | 8(cross) + 0 + 1(jitter)               | **~9** |
-
-Videos matching `coding` and `placement` rank highest. The 5th slot is a cross-category discovery slot.
-
-### Example 2: After Interactions
-
-**Demo Student likes and saves a Medical video** ("Career as Surgeon", tags: `doctor, surgery, healthcare`)
-
-```
-Engagement score = 1(view) + 3(like) + 5(save) = 9
-
-New affinity:
-  tagScores["doctor"]     = 9
-  tagScores["surgery"]    = 9
-  tagScores["healthcare"] = 9
-  creatorScores["Dr. Mehta"] = 9
-```
-
-**Next feed rerank** — Medical videos with `doctor` or `healthcare` tags now score higher:
-
-| Video                   | Category | Before | After | Change |
-|-------------------------|----------|--------|-------|--------|
-| Career as Surgeon (saved) | MED    | 9      | 9 + 13.5(doctor×1.5) + 13.5(surgery) + 13.5(healthcare) + 18(creator×2) + 10(liked) + 12(saved) = **~89** | +80 |
-| NEET Biology Revision   | MED      | 9      | 9 + 13.5(healthcare tag) = **~22** | +13 |
-| Medical Student Life    | MED      | 9      | 9 + 13.5(doctor tag) = **~22** | +13 |
-
-The saved medical video now scores **89** — higher than most engineering videos! It'll appear near the top. Other medical videos with overlapping tags also rise in the cross-category slots.
-
-### Example 3: Two Engineering Users See Different Feeds
-
-**Demo Student** (interests: `coding, campus, college, placement`)
-**Rahul Kumar** (interests: `gate, calculus, mechanics, iit, physics`)
-
-For the same engineering video "Understanding Calculus" (tags: `calculus, mathematics, engineering`):
-
-```
-Demo Student:  40(cat) + 0(no tag match) = 40
-Rahul Kumar:   40(cat) + 8(calculus) + 8(mathematics) = 56
-```
-
-Rahul sees calculus videos ranked much higher. Demo Student sees coding/placement videos higher instead.
-
----
-
-## 9. Backend Recommendation Engine
-
-The Flask backend (`backend/recommendation_engine.py`) mirrors this logic for production with Firebase:
+The Flask backend (`backend/recommendation_engine.py`) mirrors this logic for production:
 
 | Component        | Frontend (Demo)         | Backend (Production)                |
 |------------------|-------------------------|-------------------------------------|
 | Data source      | CSV + in-memory state   | Firebase Firestore                  |
 | Scoring          | `scoreVideo()` function | `SimpleRecommendationEngine` class  |
-| Weights          | 50% content, 25% tags, 15% engagement, 10% creator | 50% content, 30% collaborative, 20% trending |
+| Weights          | 50% content, 30% tags, 20% engagement | 50% content, 30% collaborative, 20% trending |
 | Persistence      | React state (session)   | Firestore `interactions` collection |
-| Cross-category   | Interleaving (1 in 5)   | Diversity filter (no same creator back-to-back) |
+| Cross-category   | Round-robin (undecided) / 4:1 (typed) | Diversity filter |
 | Watch time       | Client-side timer       | Event-based logging                 |
-
-The backend adds **collaborative filtering** (users who liked similar videos) which the frontend doesn't have since all users are independent in the demo.
 
 ---
 
-## 10. Future Enhancements
+## 11. Future Enhancements
 
 ### Planned
 
-- **Firebase persistence** — Store engagement data in Firestore so it survives page refresh
+- **Firebase persistence** — Store engagement data in Firestore for cross-session learning
 - **Collaborative filtering** — "Users who liked X also liked Y"
 - **Time decay** — Recent interactions weighted more than old ones
-- **Negative signals** — Track "scrolled past without clicking" as a weak negative signal
-- **A/B testing** — Compare different weight configurations
+- **Negative signals** — "Scrolled past without clicking" as weak negative
+- **A/B testing** — Compare weight configurations
 
 ### Research Directions
 
-- **Content embeddings** — Use NLP to embed video titles/descriptions for semantic similarity
-- **Sequential modeling** — Consider the order of interactions (RNN/Transformer-based)
-- **Multi-armed bandits** — Balance exploration vs. exploitation mathematically
-- **Cold start** — Better handling of brand new users with no interaction history
+- **Content embeddings** — NLP-based semantic video similarity
+- **Sequential modeling** — Order-aware recommendations (RNN/Transformer)
+- **Multi-armed bandits** — Mathematical exploration vs. exploitation
+- **Cold start** — Currently handled by round-robin; could use demographic priors
 
 ---
 
@@ -459,4 +547,5 @@ The backend adds **collaborative filtering** (users who liked similar videos) wh
 | `frontend/app/page.tsx` | `scoreVideosForUser()` | Interleaving + final feed construction |
 | `frontend/app/page.tsx` | `mutateEngagement()` | Immutable engagement state mutation |
 | `frontend/app/page.tsx` | `triggerFeedFlash()` | Visual feedback on feed update |
+| `frontend/app/page.tsx` | `LazyVideoTile` | IntersectionObserver-based lazy video loading |
 | `backend/recommendation_engine.py` | `SimpleRecommendationEngine` | Server-side hybrid recommender |
