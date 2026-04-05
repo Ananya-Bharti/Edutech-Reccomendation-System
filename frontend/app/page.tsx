@@ -127,8 +127,7 @@ function scoreVideo(v: Video, user: User, engagement: UserEngagement): number {
 
   /* 1. Category match — primary boost */
   if (user.aspirant_type === "undecided") {
-    // Blank-slate user: all categories start equal
-    score += 20;
+    score += 20; // Blank-slate: all categories equal
   } else if (v.category === user.aspirant_type) {
     score += 40;
   } else {
@@ -140,58 +139,68 @@ function scoreVideo(v: Video, user: User, engagement: UserEngagement): number {
   score += v.tags.filter((t) => userInterests.has(t.toLowerCase())).length * 8;
   if (user.interests.some((i) => v.title.toLowerCase().includes(i.toLowerCase()))) score += 6;
 
-  /* 3. Learned tag affinity — from engagement data */
-  for (const tag of v.tags) score += Math.min((engagement.tagScores[tag] || 0) * 2, 35);
-
-  /* 4. Creator affinity — from engagement data */
-  score += Math.min((engagement.creatorScores[v.creator_name] || 0) * 2.5, 30);
-
-  /* 5. Engagement recency — already interacted videos get boost */
-  const rec = engagement.videos[v.video_id];
-  if (rec) {
-    if (rec.liked) score += 12;
-    if (rec.saved) score += 15;
-    if (rec.shared) score += 10;
-    score += Math.min(rec.watchTime / 5, 10);
+  /* 3. Learned tag affinity — from engagement data (AMPLIFIED) */
+  /* IMPORTANT: Only boost videos the user has NOT already interacted with.
+     For already-seen videos, skip tag/creator boosts — they get PENALIZED instead.
+     This ensures fresh similar content surfaces, not the same video. */
+  const alreadySeen = !!engagement.videos[v.video_id];
+  if (!alreadySeen) {
+    for (const tag of v.tags) score += Math.min((engagement.tagScores[tag] || 0) * 3, 40);
+    /* 4. Creator affinity — from engagement data */
+    score += Math.min((engagement.creatorScores[v.creator_name] || 0) * 3, 35);
   }
 
-  /* 6. Small random jitter */
+  /* 5. ALREADY-SEEN PENALTY — push interacted videos DOWN so fresh content surfaces */
+  const rec = engagement.videos[v.video_id];
+  if (rec) {
+    score -= 40; // Heavy base penalty for any viewed video
+    if (rec.liked) score -= 15;  // Liked → already consumed
+    if (rec.saved) score -= 10;  // Saved → bookmarked, move aside
+    if (rec.shared) score -= 15; // Shared → fully consumed
+  }
+
+  /* 6. Small random jitter for variety */
   score += Math.random() * 3;
   return score;
 }
 
 /**
  * Builds the personalized feed.
- * - For "undecided" users: round-robin across all 3 categories (every 2nd video = different domain)
+ * - For "undecided" users: SCORE-BASED SORTING with diversity cap
+ *   (max 3 consecutive from same category). As engagement builds,
+ *   the liked category naturally dominates the feed.
  * - For typed users: 4 primary : 1 cross-category interleaving
- * After engagement, the scoring naturally promotes liked categories.
  */
 function scoreVideosForUser(videos: Video[], user: User, engagement: UserEngagement): Video[] {
   const scored = videos.map((v) => ({ video: v, score: scoreVideo(v, user, engagement) }));
 
   if (user.aspirant_type === "undecided") {
-    // BLANK-SLATE MODE: round-robin across all 3 categories
-    const cats = ["engineering", "medical", "mba"];
-    const buckets: Record<string, typeof scored> = {};
-    for (const c of cats) {
-      buckets[c] = scored.filter((s) => s.video.category === c).sort((a, b) => b.score - a.score);
-    }
+    // SCORE-BASED with diversity cap: sort by score, but don't allow
+    // more than 3 consecutive videos from the same category
+    scored.sort((a, b) => b.score - a.score);
+
     const result: Video[] = [];
-    const idx: Record<string, number> = { engineering: 0, medical: 0, mba: 0 };
-    let catIdx = 0;
-    const total = scored.length;
-    while (result.length < total) {
-      const cat = cats[catIdx % 3];
-      if (idx[cat] < buckets[cat].length) {
-        result.push(buckets[cat][idx[cat]].video);
-        idx[cat]++;
+    const remaining = [...scored];
+
+    while (remaining.length > 0) {
+      // Look at last 2 videos in result to check category streak
+      const lastCats = result.slice(-2).map((v) => v.category);
+      const streakCat = lastCats.length === 2 && lastCats[0] === lastCats[1] ? lastCats[0] : null;
+
+      // Find the best scoring video that doesn't break the 3-consecutive rule
+      let picked = -1;
+      for (let i = 0; i < remaining.length; i++) {
+        if (streakCat && remaining[i].video.category === streakCat) continue; // Would make 3 in a row
+        picked = i;
+        break;
       }
-      catIdx++;
-      // Safety: if we've cycled through all cats without adding, break
-      if (idx.engineering >= buckets.engineering.length &&
-          idx.medical >= buckets.medical.length &&
-          idx.mba >= buckets.mba.length) break;
+      // If all remaining are same category, just take the top one
+      if (picked === -1) picked = 0;
+
+      result.push(remaining[picked].video);
+      remaining.splice(picked, 1);
     }
+
     return result;
   }
 
