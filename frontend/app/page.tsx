@@ -122,59 +122,69 @@ function recalcAffinity(eng: UserEngagement, allVideos: Video[]) {
 /* ═══════════════════════════════════════════════════
    RECOMMENDATION SCORER — uses engagement data
    ═══════════════════════════════════════════════════ */
-function scoreVideosForUser(
-  videos: Video[],
-  user: User,
-  engagement: UserEngagement
-): Video[] {
-  const scored = videos.map((v) => {
-    let score = 0;
+function scoreVideo(v: Video, user: User, engagement: UserEngagement): number {
+  let score = 0;
 
-    /* 1. Category match — primary boost (40%) */
-    if (v.category === user.aspirant_type) {
-      score += 40;
-    } else {
-      // Cross-category: small base score but boostable via engagement
-      score += 8;
+  /* 1. Category match — primary boost */
+  if (v.category === user.aspirant_type) score += 40;
+  else score += 8;
+
+  /* 2. Static interest match — user's declared interests */
+  const userInterests = new Set(user.interests.map((t) => t.toLowerCase()));
+  score += v.tags.filter((t) => userInterests.has(t.toLowerCase())).length * 8;
+  if (user.interests.some((i) => v.title.toLowerCase().includes(i.toLowerCase()))) score += 6;
+
+  /* 3. Learned tag affinity — from engagement data */
+  for (const tag of v.tags) score += Math.min((engagement.tagScores[tag] || 0) * 1.5, 30);
+
+  /* 4. Creator affinity — from engagement data */
+  score += Math.min((engagement.creatorScores[v.creator_name] || 0) * 2, 25);
+
+  /* 5. Engagement recency — already interacted videos get moderate boost */
+  const rec = engagement.videos[v.video_id];
+  if (rec) {
+    if (rec.liked) score += 10;
+    if (rec.saved) score += 12;
+    if (rec.shared) score += 8;
+    score += Math.min(rec.watchTime / 5, 10);
+  }
+
+  /* 6. Small random jitter */
+  score += Math.random() * 4;
+  return score;
+}
+
+/**
+ * Builds the personalized feed with cross-category interleaving.
+ * In the "All" view: every ~4th video is from a non-primary category.
+ * This ensures discovery while keeping the feed relevant.
+ */
+function scoreVideosForUser(videos: Video[], user: User, engagement: UserEngagement): Video[] {
+  // Score all videos
+  const scored = videos.map((v) => ({ video: v, score: scoreVideo(v, user, engagement) }));
+
+  // Split into primary and cross-category
+  const primary = scored.filter((s) => s.video.category === user.aspirant_type).sort((a, b) => b.score - a.score);
+  const cross = scored.filter((s) => s.video.category !== user.aspirant_type).sort((a, b) => b.score - a.score);
+
+  // Interleave: insert 1 cross-category video every 4 primary videos
+  const result: Video[] = [];
+  let pi = 0, ci = 0;
+  const INTERLEAVE_EVERY = 4; // 1 in 5 slots = cross-category
+
+  while (pi < primary.length || ci < cross.length) {
+    // Add up to INTERLEAVE_EVERY primary videos
+    for (let n = 0; n < INTERLEAVE_EVERY && pi < primary.length; n++, pi++) {
+      result.push(primary[pi].video);
     }
-
-    /* 2. Static interest match — user's declared interests (15%) */
-    const userInterests = new Set(user.interests.map((t) => t.toLowerCase()));
-    const tagOverlap = v.tags.filter((t) => userInterests.has(t.toLowerCase())).length;
-    score += tagOverlap * 8;
-
-    // Title keyword match
-    if (user.interests.some((i) => v.title.toLowerCase().includes(i.toLowerCase()))) {
-      score += 6;
+    // Then add 1 cross-category video
+    if (ci < cross.length) {
+      result.push(cross[ci].video);
+      ci++;
     }
+  }
 
-    /* 3. Learned tag affinity — from engagement data (25%) */
-    for (const tag of v.tags) {
-      const ts = engagement.tagScores[tag] || 0;
-      score += Math.min(ts * 1.5, 30); // Cap per-tag contribution
-    }
-
-    /* 4. Creator affinity — from engagement data (10%) */
-    const cs = engagement.creatorScores[v.creator_name] || 0;
-    score += Math.min(cs * 2, 25);
-
-    /* 5. Engagement recency — already interacted videos get moderate boost (10%) */
-    const rec = engagement.videos[v.video_id];
-    if (rec) {
-      if (rec.liked) score += 10;
-      if (rec.saved) score += 12;
-      if (rec.shared) score += 8;
-      score += Math.min(rec.watchTime / 5, 10); // watch time boost, capped
-    }
-
-    /* 6. Small random jitter for variety */
-    score += Math.random() * 4;
-
-    return { video: v, score };
-  });
-
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map((s) => s.video);
+  return result;
 }
 
 /* ═══════════════════════════════════════════
@@ -346,6 +356,7 @@ export default function Home() {
   const [animLike, setAnimLike] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [feedKey, setFeedKey] = useState(0); // increment to force feed re-render
+  const [feedUpdated, setFeedUpdated] = useState(false); // flash animation on feed change
   const menuRef = useRef<HTMLDivElement>(null);
   const watchStartRef = useRef<number>(0); // timestamp when video modal opened
 
@@ -416,6 +427,9 @@ export default function Home() {
   /* ── toast ── */
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
 
+  /* ── feed update flash ── */
+  const triggerFeedFlash = () => { setFeedUpdated(true); setTimeout(() => setFeedUpdated(false), 1200); };
+
   /* ═══════════════════════════════════════════
      ENGAGEMENT MUTATION FUNCTIONS
      ═══════════════════════════════════════════ */
@@ -460,7 +474,7 @@ export default function Home() {
       wasLiked = rec.liked;
       rec.liked = !rec.liked;
     });
-    setFeedKey((k) => k + 1); // refresh feed ordering
+    setFeedKey((k) => k + 1); triggerFeedFlash();
     if (!wasLiked) {
       showToast("❤️ Liked! Feed updated");
       try { axios.post(`${API}/interactions`, { user_id: currentUser.user_id, video_id: videoId, event_type: "like" }); } catch {}
@@ -476,7 +490,7 @@ export default function Home() {
       wasSaved = rec.saved;
       rec.saved = !rec.saved;
     });
-    setFeedKey((k) => k + 1); // refresh feed ordering
+    setFeedKey((k) => k + 1); triggerFeedFlash();
     if (!wasSaved) {
       showToast("🔖 Saved! Feed updated");
       try { axios.post(`${API}/interactions`, { user_id: currentUser.user_id, video_id: videoId, event_type: "save" }); } catch {}
@@ -490,7 +504,7 @@ export default function Home() {
       const rec = getVideoRecord(eng, videoId);
       rec.shared = true;
     });
-    setFeedKey((k) => k + 1);
+    setFeedKey((k) => k + 1); triggerFeedFlash();
     showToast("📤 Shared! Feed updated");
     try { axios.post(`${API}/interactions`, { user_id: currentUser.user_id, video_id: videoId, event_type: "share" }); } catch {}
   }, [currentUser, mutateEngagement]);
@@ -506,7 +520,7 @@ export default function Home() {
     if (selectedVideo && watchStartRef.current > 0) {
       const seconds = Math.floor((Date.now() - watchStartRef.current) / 1000);
       recordWatchTime(selectedVideo.video_id, seconds);
-      setFeedKey((k) => k + 1); // re-rank feed based on new watch time
+      setFeedKey((k) => k + 1); triggerFeedFlash();
     }
     setSelectedVideo(null);
     watchStartRef.current = 0;
@@ -649,7 +663,9 @@ export default function Home() {
             <p>{viewMode === "saved" ? "No saved videos yet. Browse the feed and save some!" : "No videos found."}</p>
           </div>
         ) : (
-          <div className="video-grid">
+          <>
+            {feedUpdated && <div className="feed-updated-badge">✨ Feed Updated — reranked based on your activity</div>}
+            <div className={`video-grid ${feedUpdated ? "feed-flash" : ""}`}>
             {filteredVideos.map((v) => (
               <LazyVideoTile
                 key={v.video_id}
@@ -661,6 +677,7 @@ export default function Home() {
               />
             ))}
           </div>
+          </>
         )}
       </div>
 

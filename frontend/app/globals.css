@@ -1110,3 +1110,33 @@ body {
   border-radius: 100px;
   border: 1px solid var(--border);
 }
+
+/* ═══════════════════════════════════════════
+   FEED UPDATE FLASH ANIMATION
+   ═══════════════════════════════════════════ */
+.feed-updated-badge {
+  text-align: center;
+  padding: 8px 20px;
+  margin: 0 24px 12px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.08), rgba(253, 121, 168, 0.08));
+  border: 1px solid rgba(108, 92, 231, 0.2);
+  color: var(--accent-light);
+  font-size: 12px;
+  font-weight: 500;
+  animation: feedBadgeIn 0.4s ease;
+}
+@keyframes feedBadgeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.feed-flash {
+  animation: feedFlash 0.8s ease;
+}
+@keyframes feedFlash {
+  0% { opacity: 1; }
+  15% { opacity: 0.6; filter: brightness(1.15); }
+  40% { opacity: 0.85; }
+  100% { opacity: 1; filter: brightness(1); }
+}
