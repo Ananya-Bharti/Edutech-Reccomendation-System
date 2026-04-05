@@ -126,8 +126,14 @@ function scoreVideo(v: Video, user: User, engagement: UserEngagement): number {
   let score = 0;
 
   /* 1. Category match — primary boost */
-  if (v.category === user.aspirant_type) score += 40;
-  else score += 8;
+  if (user.aspirant_type === "undecided") {
+    // Blank-slate user: all categories start equal
+    score += 20;
+  } else if (v.category === user.aspirant_type) {
+    score += 40;
+  } else {
+    score += 8;
+  }
 
   /* 2. Static interest match — user's declared interests */
   const userInterests = new Set(user.interests.map((t) => t.toLowerCase()));
@@ -135,49 +141,72 @@ function scoreVideo(v: Video, user: User, engagement: UserEngagement): number {
   if (user.interests.some((i) => v.title.toLowerCase().includes(i.toLowerCase()))) score += 6;
 
   /* 3. Learned tag affinity — from engagement data */
-  for (const tag of v.tags) score += Math.min((engagement.tagScores[tag] || 0) * 1.5, 30);
+  for (const tag of v.tags) score += Math.min((engagement.tagScores[tag] || 0) * 2, 35);
 
   /* 4. Creator affinity — from engagement data */
-  score += Math.min((engagement.creatorScores[v.creator_name] || 0) * 2, 25);
+  score += Math.min((engagement.creatorScores[v.creator_name] || 0) * 2.5, 30);
 
-  /* 5. Engagement recency — already interacted videos get moderate boost */
+  /* 5. Engagement recency — already interacted videos get boost */
   const rec = engagement.videos[v.video_id];
   if (rec) {
-    if (rec.liked) score += 10;
-    if (rec.saved) score += 12;
-    if (rec.shared) score += 8;
+    if (rec.liked) score += 12;
+    if (rec.saved) score += 15;
+    if (rec.shared) score += 10;
     score += Math.min(rec.watchTime / 5, 10);
   }
 
   /* 6. Small random jitter */
-  score += Math.random() * 4;
+  score += Math.random() * 3;
   return score;
 }
 
 /**
- * Builds the personalized feed with cross-category interleaving.
- * In the "All" view: every ~4th video is from a non-primary category.
- * This ensures discovery while keeping the feed relevant.
+ * Builds the personalized feed.
+ * - For "undecided" users: round-robin across all 3 categories (every 2nd video = different domain)
+ * - For typed users: 4 primary : 1 cross-category interleaving
+ * After engagement, the scoring naturally promotes liked categories.
  */
 function scoreVideosForUser(videos: Video[], user: User, engagement: UserEngagement): Video[] {
-  // Score all videos
   const scored = videos.map((v) => ({ video: v, score: scoreVideo(v, user, engagement) }));
 
-  // Split into primary and cross-category
+  if (user.aspirant_type === "undecided") {
+    // BLANK-SLATE MODE: round-robin across all 3 categories
+    const cats = ["engineering", "medical", "mba"];
+    const buckets: Record<string, typeof scored> = {};
+    for (const c of cats) {
+      buckets[c] = scored.filter((s) => s.video.category === c).sort((a, b) => b.score - a.score);
+    }
+    const result: Video[] = [];
+    const idx: Record<string, number> = { engineering: 0, medical: 0, mba: 0 };
+    let catIdx = 0;
+    const total = scored.length;
+    while (result.length < total) {
+      const cat = cats[catIdx % 3];
+      if (idx[cat] < buckets[cat].length) {
+        result.push(buckets[cat][idx[cat]].video);
+        idx[cat]++;
+      }
+      catIdx++;
+      // Safety: if we've cycled through all cats without adding, break
+      if (idx.engineering >= buckets.engineering.length &&
+          idx.medical >= buckets.medical.length &&
+          idx.mba >= buckets.mba.length) break;
+    }
+    return result;
+  }
+
+  // TYPED USER MODE: 4 primary : 1 cross interleaving
   const primary = scored.filter((s) => s.video.category === user.aspirant_type).sort((a, b) => b.score - a.score);
   const cross = scored.filter((s) => s.video.category !== user.aspirant_type).sort((a, b) => b.score - a.score);
 
-  // Interleave: insert 1 cross-category video every 4 primary videos
   const result: Video[] = [];
   let pi = 0, ci = 0;
-  const INTERLEAVE_EVERY = 4; // 1 in 5 slots = cross-category
+  const INTERLEAVE_EVERY = 4;
 
   while (pi < primary.length || ci < cross.length) {
-    // Add up to INTERLEAVE_EVERY primary videos
     for (let n = 0; n < INTERLEAVE_EVERY && pi < primary.length; n++, pi++) {
       result.push(primary[pi].video);
     }
-    // Then add 1 cross-category video
     if (ci < cross.length) {
       result.push(cross[ci].video);
       ci++;
@@ -191,7 +220,7 @@ function scoreVideosForUser(videos: Video[], user: User, engagement: UserEngagem
    USER & CREATOR DATA
    ═══════════════════════════════════════════ */
 const DEMO_USERS: User[] = [
-  { user_id: "demo_student", name: "Demo Student", aspirant_type: "engineering", interests: ["coding", "campus", "college", "placement", "nit", "software", "startup", "developer"], bio: "CS undergraduate exploring campus life and coding careers" },
+  { user_id: "demo_student", name: "Demo Student", aspirant_type: "undecided", interests: [], bio: "New user — no preferences yet. Watch, like, and save to shape your feed!" },
   { user_id: "test_eng_001", name: "Rahul Kumar", aspirant_type: "engineering", interests: ["gate", "calculus", "mechanics", "iit", "physics", "mathematics", "engineering"], bio: "GATE aspirant focused on core engineering fundamentals" },
   { user_id: "test_med_001", name: "Priya Sharma", aspirant_type: "medical", interests: ["neet", "biology", "anatomy", "physiology", "mbbs", "doctor", "healthcare"], bio: "NEET aspirant passionate about medical sciences" },
   { user_id: "test_mba_001", name: "Amit Patel", aspirant_type: "mba", interests: ["cat", "finance", "consulting", "iim", "strategy", "management", "marketing"], bio: "CAT aspirant interested in finance and consulting" },
@@ -259,8 +288,8 @@ const CloseSVG = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="no
 const EyeSVG = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>);
 const CheckSVG = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="20 6 9 17 4 12" /></svg>);
 
-const AVATAR_COLORS: Record<string, string> = { engineering: "linear-gradient(135deg, #6c5ce7, #a29bfe)", medical: "linear-gradient(135deg, #00cec9, #55efc4)", mba: "linear-gradient(135deg, #e17055, #fdcb6e)" };
-const CATEGORY_EMOJI: Record<string, string> = { engineering: "⚙️", medical: "🩺", mba: "📈" };
+const AVATAR_COLORS: Record<string, string> = { engineering: "linear-gradient(135deg, #6c5ce7, #a29bfe)", medical: "linear-gradient(135deg, #00cec9, #55efc4)", mba: "linear-gradient(135deg, #e17055, #fdcb6e)", undecided: "linear-gradient(135deg, #636e72, #b2bec3)" };
+const CATEGORY_EMOJI: Record<string, string> = { engineering: "⚙️", medical: "🩺", mba: "📈", undecided: "🔍" };
 
 /* ═══════════════════════════════════════════
    LAZY VIDEO TILE — loads video only in viewport
