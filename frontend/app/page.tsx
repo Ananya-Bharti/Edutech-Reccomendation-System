@@ -233,6 +233,7 @@ const DEMO_USERS: User[] = [
   { user_id: "test_eng_001", name: "Rahul Kumar", aspirant_type: "engineering", interests: ["gate", "calculus", "mechanics", "iit", "physics", "mathematics", "engineering"], bio: "GATE aspirant focused on core engineering fundamentals" },
   { user_id: "test_med_001", name: "Priya Sharma", aspirant_type: "medical", interests: ["neet", "biology", "anatomy", "physiology", "mbbs", "doctor", "healthcare"], bio: "NEET aspirant passionate about medical sciences" },
   { user_id: "test_mba_001", name: "Amit Patel", aspirant_type: "mba", interests: ["cat", "finance", "consulting", "iim", "strategy", "management", "marketing"], bio: "CAT aspirant interested in finance and consulting" },
+  { user_id: "counselor_001", name: "Counselor", aspirant_type: "mba", interests: ["mba", "consulting", "strategy", "finance", "marketing"], bio: "MBA Counselor — Upload & manage educational content" },
 ];
 
 const CREATOR_DATA: Record<string, Omit<Creator, "videoCount" | "totalViews" | "totalLikes">> = {
@@ -252,6 +253,7 @@ const CREATOR_DATA: Record<string, Omit<Creator, "videoCount" | "totalViews" | "
   "Business Expert": { id: "creator_013", name: "Business Expert", category: "mba", specialty: "Strategy & Finance", bio: "MBA from ISB Hyderabad, 8 years in investment banking. Creates content on business strategy and financial concepts." },
   "Strategy Coach": { id: "creator_014", name: "Strategy Coach", category: "mba", specialty: "Consulting", bio: "Former BCG consultant. Teaches frameworks for business problem solving and case competitions." },
   "IIM Professor": { id: "creator_015", name: "IIM Professor", category: "mba", specialty: "Marketing", bio: "Marketing faculty at IIM Calcutta. Brings real-world brand case studies to the classroom." },
+  "Counselor": { id: "counselor_001", name: "Counselor", category: "mba", specialty: "MBA Guidance & Counseling", bio: "Expert MBA counselor helping students navigate admissions, career paths, and interview preparation." },
 };
 
 /* ─── Demo video fallback ─── */
@@ -296,16 +298,42 @@ const BookmarkSVG = ({ filled }: { filled: boolean }) => (<svg width="18" height
 const CloseSVG = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>);
 const EyeSVG = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>);
 const CheckSVG = () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><polyline points="20 6 9 17 4 12" /></svg>);
+const PlusSVG = () => (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>);
+const ChartSVG = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="12" width="4" height="9" rx="1" /><rect x="10" y="7" width="4" height="14" rx="1" /><rect x="17" y="3" width="4" height="18" rx="1" /></svg>);
+const UploadSVG = () => (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>);
 
 const AVATAR_COLORS: Record<string, string> = { engineering: "linear-gradient(135deg, #6c5ce7, #a29bfe)", medical: "linear-gradient(135deg, #00cec9, #55efc4)", mba: "linear-gradient(135deg, #e17055, #fdcb6e)", undecided: "linear-gradient(135deg, #636e72, #b2bec3)" };
 const CATEGORY_EMOJI: Record<string, string> = { engineering: "⚙️", medical: "🩺", mba: "📈", undecided: "🔍" };
+
+/* ─── Counselor's pre-uploaded demo videos (5 MBA) ─── */
+const COUNSELOR_DEMO_VIDEOS: Video[] = [
+  { video_id: "vid_100", title: "MBA Career in Consulting", tags: ["marketing", "management", "gmat", "verbal"], category: "mba", subcategory: "exam", difficulty: "beginner", creator_name: "Counselor", creator_id: "counselor_001", duration: 85, video_url: "/api/video?id=vid_100&cat=mba", video_file: "mba/vid_100.mp4", target_audience: "mba_aspirant", view_count: 12400, like_count: 1830, share_count: 420, save_count: 680, comment_count: 195 },
+  { video_id: "vid_101", title: "CAT Reasoning Tips", tags: ["management", "entrepreneur", "school", "verbal"], category: "mba", subcategory: "college", difficulty: "beginner", creator_name: "Counselor", creator_id: "counselor_001", duration: 88, video_url: "/api/video?id=vid_101&cat=mba", video_file: "mba/vid_101.mp4", target_audience: "mba_aspirant", view_count: 9870, like_count: 1420, share_count: 310, save_count: 530, comment_count: 142 },
+  { video_id: "vid_102", title: "Marketing Concepts", tags: ["strategy", "school", "campus", "mba"], category: "mba", subcategory: "career", difficulty: "advanced", creator_name: "Counselor", creator_id: "counselor_001", duration: 37, video_url: "/api/video?id=vid_102&cat=mba", video_file: "mba/vid_102.mp4", target_audience: "mba_aspirant", view_count: 7650, like_count: 980, share_count: 215, save_count: 390, comment_count: 87 },
+  { video_id: "vid_103", title: "Management Fundamentals", tags: ["case", "strategy", "iim", "mba"], category: "mba", subcategory: "exam", difficulty: "advanced", creator_name: "Counselor", creator_id: "counselor_001", duration: 80, video_url: "/api/video?id=vid_103&cat=mba", video_file: "mba/vid_103.mp4", target_audience: "mba_aspirant", view_count: 15200, like_count: 2100, share_count: 560, save_count: 890, comment_count: 310 },
+  { video_id: "vid_104", title: "CAT Verbal Tips", tags: ["campus", "marketing", "case", "reasoning", "mba"], category: "mba", subcategory: "college", difficulty: "advanced", creator_name: "Counselor", creator_id: "counselor_001", duration: 64, video_url: "/api/video?id=vid_104&cat=mba", video_file: "mba/vid_104.mp4", target_audience: "mba_aspirant", view_count: 6320, like_count: 870, share_count: 180, save_count: 290, comment_count: 64 },
+];
+
+interface VideoAnalytics {
+  views: number; likes: number; shares: number; saves: number;
+  gender: { male: number; female: number; other: number };
+  ageGroups: { label: string; pct: number }[];
+}
+const COUNSELOR_ANALYTICS: Record<string, VideoAnalytics> = {
+  vid_100: { views: 12400, likes: 1830, shares: 420, saves: 680, gender: { male: 58, female: 38, other: 4 }, ageGroups: [{ label: "18-24", pct: 48 }, { label: "25-34", pct: 30 }, { label: "35-44", pct: 14 }, { label: "45+", pct: 8 }] },
+  vid_101: { views: 9870, likes: 1420, shares: 310, saves: 530, gender: { male: 62, female: 34, other: 4 }, ageGroups: [{ label: "18-24", pct: 52 }, { label: "25-34", pct: 28 }, { label: "35-44", pct: 13 }, { label: "45+", pct: 7 }] },
+  vid_102: { views: 7650, likes: 980, shares: 215, saves: 390, gender: { male: 55, female: 40, other: 5 }, ageGroups: [{ label: "18-24", pct: 40 }, { label: "25-34", pct: 35 }, { label: "35-44", pct: 17 }, { label: "45+", pct: 8 }] },
+  vid_103: { views: 15200, likes: 2100, shares: 560, saves: 890, gender: { male: 64, female: 32, other: 4 }, ageGroups: [{ label: "18-24", pct: 44 }, { label: "25-34", pct: 32 }, { label: "35-44", pct: 16 }, { label: "45+", pct: 8 }] },
+  vid_104: { views: 6320, likes: 870, shares: 180, saves: 290, gender: { male: 60, female: 36, other: 4 }, ageGroups: [{ label: "18-24", pct: 46 }, { label: "25-34", pct: 31 }, { label: "35-44", pct: 15 }, { label: "45+", pct: 8 }] },
+};
+const COUNSELOR_VIDEO_IDS = new Set(COUNSELOR_DEMO_VIDEOS.map((v) => v.video_id));
 
 /* ═══════════════════════════════════════════
    LAZY VIDEO TILE — loads video only in viewport
    ═══════════════════════════════════════════ */
 function LazyVideoTile({
-  video, isLiked, isSaved, onClick, fmtNum,
-}: { video: Video; isLiked: boolean; isSaved: boolean; onClick: () => void; fmtNum: (n: number) => string }) {
+  video, isLiked, isSaved, onClick, fmtNum, onAnalytics,
+}: { video: Video; isLiked: boolean; isSaved: boolean; onClick: () => void; fmtNum: (n: number) => string; onAnalytics?: () => void }) {
   const tileRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
@@ -349,6 +377,12 @@ function LazyVideoTile({
 
       {isLiked && <span className="tile-liked-badge">❤️</span>}
       {isSaved && <span className="tile-saved-badge">🔖</span>}
+
+      {onAnalytics && (
+        <button className="tile-analytics-btn" onClick={(e) => { e.stopPropagation(); onAnalytics(); }} title="View Analytics">
+          <ChartSVG /> Analytics
+        </button>
+      )}
 
       <div className="tile-meta-strip">
         <div className="strip-title">{video.title}</div>
@@ -398,6 +432,19 @@ export default function Home() {
   const menuRef = useRef<HTMLDivElement>(null);
   const watchStartRef = useRef<number>(0); // timestamp when video modal opened
 
+  // Counselor-specific state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadDesc, setUploadDesc] = useState("");
+  const [uploadTags, setUploadTags] = useState("");
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [analyticsVideo, setAnalyticsVideo] = useState<Video | null>(null);
+  const [counselorUploads, setCounselorUploads] = useState<Video[]>([]);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const isCounselor = currentUser.user_id === "counselor_001";
+
   // Current user's engagement (derived)
   const engagement = allEngagement[currentUser.user_id] ?? createEmptyEngagement();
   const liked = useMemo(() => {
@@ -417,6 +464,21 @@ export default function Home() {
     return false;
   }, []);
 
+  const loadCounselorUploads = useCallback(async () => {
+    try {
+      const r = await axios.get("/api/upload");
+      if (r.data.videos?.length) {
+        const uploads = r.data.videos.map((v: Record<string, unknown>) => ({
+          ...v,
+          tags: Array.isArray(v.tags) ? v.tags : [],
+          duration: Number(v.duration) || 0,
+          view_count: 0, like_count: 0, share_count: 0, save_count: 0, comment_count: 0,
+        })) as Video[];
+        setCounselorUploads(uploads);
+      }
+    } catch {}
+  }, []);
+
   const checkBackend = useCallback(async () => {
     try { await axios.get(`${API}/health`, { timeout: 2000 }); setBackendOnline(true); return true; } catch { setBackendOnline(false); return false; }
   }, []);
@@ -426,28 +488,89 @@ export default function Home() {
       setLoading(true);
       const loaded = await loadLocalVideos();
       if (!loaded) setRawVideos(makeDemoVideos());
+      await loadCounselorUploads();
       await checkBackend();
       setLoading(false);
     })();
-  }, [loadLocalVideos, checkBackend]);
+  }, [loadLocalVideos, loadCounselorUploads, checkBackend]);
+
+  /* ── Merge counselor videos into rawVideos for the feed ── */
+  const allVideos = useMemo(() => {
+    // Replace the original vid_100-104 with counselor-owned versions, then append uploads
+    const base = rawVideos.filter((v) => !COUNSELOR_VIDEO_IDS.has(v.video_id));
+    return [...base, ...COUNSELOR_DEMO_VIDEOS, ...counselorUploads];
+  }, [rawVideos, counselorUploads]);
+
+  /* ── Upload handler ── */
+  const resetUploadForm = () => {
+    setUploadFile(null); setUploadTitle(""); setUploadDesc(""); setUploadTags("");
+    if (uploadPreview) { URL.revokeObjectURL(uploadPreview); setUploadPreview(null); }
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!uploadFile || !uploadTitle.trim()) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("video", uploadFile);
+      fd.append("title", uploadTitle.trim());
+      fd.append("description", uploadDesc.trim());
+      fd.append("tags", uploadTags.trim());
+      const res = await axios.post("/api/upload", fd);
+      if (res.data.success && res.data.video) {
+        const newVid: Video = {
+          ...res.data.video,
+          tags: Array.isArray(res.data.video.tags) ? res.data.video.tags : [],
+          duration: Number(res.data.video.duration) || 0,
+          view_count: 0, like_count: 0, share_count: 0, save_count: 0, comment_count: 0,
+        };
+        setCounselorUploads((prev) => [...prev, newVid]);
+        setFeedKey((k) => k + 1);
+        showToast("🎉 Video uploaded successfully!");
+        resetUploadForm();
+        setShowUploadModal(false);
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      showToast("❌ Upload failed. Try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = (file: File) => {
+    setUploadFile(file);
+    if (uploadPreview) URL.revokeObjectURL(uploadPreview);
+    setUploadPreview(URL.createObjectURL(file));
+  };
 
   /* ── build personalized feed using engagement data ── */
   const personalizedVideos = useMemo(
-    () => scoreVideosForUser(rawVideos, currentUser, engagement),
+    () => scoreVideosForUser(allVideos, currentUser, engagement),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rawVideos, currentUser, engagement, feedKey]
+    [allVideos, currentUser, engagement, feedKey]
   );
 
   /* ── filter/search ── */
+  const counselorVideoIds = useMemo(() => {
+    const ids = new Set(COUNSELOR_DEMO_VIDEOS.map((v) => v.video_id));
+    counselorUploads.forEach((v) => ids.add(v.video_id));
+    return ids;
+  }, [counselorUploads]);
+
   const filteredVideos = useMemo(() => {
     let v = viewMode === "saved" ? personalizedVideos.filter((x) => saved.has(x.video_id)) : personalizedVideos;
-    if (catFilter !== "all") v = v.filter((x) => x.category === catFilter);
+    if (catFilter === "my_uploads") {
+      v = v.filter((x) => counselorVideoIds.has(x.video_id));
+    } else if (catFilter !== "all") {
+      v = v.filter((x) => x.category === catFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       v = v.filter((x) => x.title.toLowerCase().includes(q) || x.creator_name.toLowerCase().includes(q) || x.tags.some((t) => t.toLowerCase().includes(q)) || x.category.toLowerCase().includes(q));
     }
     return v;
-  }, [personalizedVideos, catFilter, search, viewMode, saved]);
+  }, [personalizedVideos, catFilter, search, viewMode, saved, counselorVideoIds]);
 
   /* ── close dropdown / modal ── */
   useEffect(() => {
@@ -480,11 +603,11 @@ export default function Home() {
         eng.videos[vid] = { ...eng.videos[vid] };
       }
       mutator(eng);
-      recalcAffinity(eng, rawVideos);
+      recalcAffinity(eng, allVideos);
       copy[userId] = eng;
       return copy;
     });
-  }, [rawVideos]);
+  }, [allVideos]);
 
   const recordView = useCallback((videoId: string) => {
     mutateEngagement(currentUser.user_id, (eng) => {
@@ -580,7 +703,7 @@ export default function Home() {
   const openCreatorProfile = (creatorName: string) => {
     const base = CREATOR_DATA[creatorName];
     if (!base) return;
-    const creatorVids = rawVideos.filter((v) => v.creator_name === creatorName);
+    const creatorVids = allVideos.filter((v) => v.creator_name === creatorName);
     setSelectedCreator({
       ...base,
       videoCount: creatorVids.length,
@@ -690,6 +813,11 @@ export default function Home() {
               {c === "all" ? "🔥 All" : c === "engineering" ? "⚙️ Engineering" : c === "medical" ? "🩺 Medical" : "📈 MBA"}
             </button>
           ))}
+          {isCounselor && (
+            <button className={`cat-pill my-uploads-pill ${catFilter === "my_uploads" ? "active" : ""}`} onClick={() => setCatFilter("my_uploads")} id="cat-my-uploads">
+              📂 My Uploads
+            </button>
+          )}
         </div>
 
         {/* Video grid */}
@@ -712,6 +840,7 @@ export default function Home() {
                 isSaved={saved.has(v.video_id)}
                 onClick={() => openVideoModal(v)}
                 fmtNum={fmtNum}
+                onAnalytics={isCounselor && counselorVideoIds.has(v.video_id) ? () => setAnalyticsVideo(v) : undefined}
               />
             ))}
           </div>
@@ -821,7 +950,7 @@ export default function Home() {
             </div>
             <div className="detail-label" style={{ marginTop: 20 }}>Videos by {selectedCreator.name}</div>
             <div className="creator-videos-list">
-              {rawVideos.filter((v) => v.creator_name === selectedCreator.name).slice(0, 8).map((v) => (
+              {allVideos.filter((v) => v.creator_name === selectedCreator.name).slice(0, 8).map((v) => (
                 <div key={v.video_id} className="creator-video-item" onClick={() => { setSelectedCreator(null); openVideoModal(v); }}>
                   <div className="creator-vid-thumb"><PlaySVG size={14} /></div>
                   <div className="creator-vid-info">
@@ -834,6 +963,139 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ── COUNSELOR: FLOATING UPLOAD BUTTON ── */}
+      {isCounselor && !showUploadModal && !selectedVideo && !analyticsVideo && (
+        <button className="fab-upload" onClick={() => setShowUploadModal(true)} id="fab-upload" title="Upload Video">
+          <PlusSVG />
+        </button>
+      )}
+
+      {/* ── COUNSELOR: UPLOAD MODAL ── */}
+      {showUploadModal && (
+        <div className="player-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setShowUploadModal(false); resetUploadForm(); } }} id="upload-modal">
+          <div className="upload-modal">
+            <div className="upload-modal-header">
+              <h2>Upload Video</h2>
+              <button className="player-close" onClick={() => { setShowUploadModal(false); resetUploadForm(); }}><CloseSVG /></button>
+            </div>
+
+            {/* File drop zone */}
+            <div
+              className={`upload-dropzone ${uploadFile ? "has-file" : ""}`}
+              onClick={() => uploadInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove("drag-over"); }}
+              onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove("drag-over"); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith("video/")) handleFileSelect(f); }}
+            >
+              <input ref={uploadInputRef} type="file" accept="video/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }} />
+              {uploadPreview ? (
+                <video src={uploadPreview} className="upload-preview-video" muted autoPlay loop playsInline />
+              ) : (
+                <div className="upload-placeholder">
+                  <UploadSVG />
+                  <p>Click or drag video here</p>
+                  <span>MP4, MOV, AVI up to 100MB</span>
+                </div>
+              )}
+            </div>
+
+            {/* Form fields */}
+            <div className="upload-form">
+              <div className="upload-field">
+                <label>Title *</label>
+                <input type="text" placeholder="Enter video title..." value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} maxLength={100} />
+              </div>
+              <div className="upload-field">
+                <label>Description</label>
+                <textarea placeholder="Write a description..." value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} rows={3} maxLength={500} />
+              </div>
+              <div className="upload-field">
+                <label>Tags</label>
+                <input type="text" placeholder="mba, finance, consulting (comma-separated)" value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} />
+                {uploadTags.trim() && (
+                  <div className="upload-tags-preview">
+                    {uploadTags.split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+                      <span key={t} className="upload-tag-pill">#{t}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button className="upload-submit-btn" onClick={handleUploadSubmit} disabled={uploading || !uploadFile || !uploadTitle.trim()}>
+                {uploading ? (
+                  <><span className="upload-spinner" /> Uploading...</>
+                ) : (
+                  <>Post Video</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── COUNSELOR: ANALYTICS MODAL ── */}
+      {analyticsVideo && (() => {
+        const a = COUNSELOR_ANALYTICS[analyticsVideo.video_id] || { views: Math.floor(Math.random() * 5000) + 100, likes: Math.floor(Math.random() * 500) + 10, shares: Math.floor(Math.random() * 200) + 5, saves: Math.floor(Math.random() * 300) + 10, gender: { male: 58, female: 38, other: 4 }, ageGroups: [{ label: "18-24", pct: 45 }, { label: "25-34", pct: 32 }, { label: "35-44", pct: 15 }, { label: "45+", pct: 8 }] };
+        return (
+          <div className="player-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setAnalyticsVideo(null); }} id="analytics-modal">
+            <div className="analytics-modal">
+              <div className="analytics-header">
+                <h2>📊 Video Analytics</h2>
+                <button className="player-close" onClick={() => setAnalyticsVideo(null)}><CloseSVG /></button>
+              </div>
+              <div className="analytics-video-title">{analyticsVideo.title}</div>
+
+              {/* Engagement Stats */}
+              <div className="analytics-stats-grid">
+                <div className="analytics-stat-card">
+                  <div className="analytics-stat-icon">👁</div>
+                  <div className="analytics-stat-num">{fmtNum(a.views)}</div>
+                  <div className="analytics-stat-label">Views</div>
+                </div>
+                <div className="analytics-stat-card">
+                  <div className="analytics-stat-icon">❤️</div>
+                  <div className="analytics-stat-num">{fmtNum(a.likes)}</div>
+                  <div className="analytics-stat-label">Likes</div>
+                </div>
+                <div className="analytics-stat-card">
+                  <div className="analytics-stat-icon">📤</div>
+                  <div className="analytics-stat-num">{fmtNum(a.shares)}</div>
+                  <div className="analytics-stat-label">Shares</div>
+                </div>
+                <div className="analytics-stat-card">
+                  <div className="analytics-stat-icon">🔖</div>
+                  <div className="analytics-stat-num">{fmtNum(a.saves)}</div>
+                  <div className="analytics-stat-label">Saves</div>
+                </div>
+              </div>
+
+              {/* Gender Split */}
+              <div className="analytics-section">
+                <div className="analytics-section-title">Viewer Gender</div>
+                <div className="analytics-gender-bars">
+                  <div className="gender-bar-row"><span className="gender-label">Male</span><div className="gender-bar-track"><div className="gender-bar-fill male" style={{ width: `${a.gender.male}%` }} /><span className="gender-pct">{a.gender.male}%</span></div></div>
+                  <div className="gender-bar-row"><span className="gender-label">Female</span><div className="gender-bar-track"><div className="gender-bar-fill female" style={{ width: `${a.gender.female}%` }} /><span className="gender-pct">{a.gender.female}%</span></div></div>
+                  <div className="gender-bar-row"><span className="gender-label">Other</span><div className="gender-bar-track"><div className="gender-bar-fill other" style={{ width: `${a.gender.other}%` }} /><span className="gender-pct">{a.gender.other}%</span></div></div>
+                </div>
+              </div>
+
+              {/* Age Groups */}
+              <div className="analytics-section">
+                <div className="analytics-section-title">Viewer Age Groups</div>
+                <div className="analytics-age-bars">
+                  {a.ageGroups.map((g) => (
+                    <div key={g.label} className="age-bar-col">
+                      <div className="age-bar-track-v"><div className="age-bar-fill-v" style={{ height: `${g.pct}%` }} /></div>
+                      <div className="age-bar-pct">{g.pct}%</div>
+                      <div className="age-bar-label">{g.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }

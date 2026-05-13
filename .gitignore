@@ -21,3 +21,12 @@ Videos data/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Meeting minutes & reports (not for repo)
+MINUTES OF MEETINGS*
+TYCSA14_AI_CP_REPORT_ESE*
+*.msi
+
+# Temporary generated files
+extracted_docx_contents.txt
+implementation_plan.md

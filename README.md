@@ -1,3 +1,8 @@
+**Quick Start Command:** Open two terminals.
+ 
+ |Terminal 1 (Backend - PowerShell): `cd backend; .\venv\Scripts\activate; python app.py` 
+ | Terminal 2 (Frontend - PowerShell): `cd frontend; npm run dev`
+
 # 🎓 EduTech Reels - Short-Form Video Recommendation System
 ### AI/ML Course Project - Industry Prototype Demo
 
